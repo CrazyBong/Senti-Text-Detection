@@ -5,15 +5,22 @@ import { Card } from "@/components/ui/card";
 import { Smile, Frown, Meh, Sparkles, Wind, CloudRain, Zap, Flame } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type SentimentResult = "positive" | "negative" | "neutral" | "calm" | "sad" | "shock" | "anger" | null;
+// Define type for backend response
+type EmotionResult = {
+  primary_emotion: string;
+  primary_confidence: number;
+  secondary_emotion: string;
+  secondary_confidence: number;
+};
 
 const Demo = () => {
   const [text, setText] = useState("");
-  const [sentiment, setSentiment] = useState<SentimentResult>(null);
+  const [result, setResult] = useState<EmotionResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const analyzeSentiment = () => {
+  const analyzeSentiment = async () => {
     if (!text.trim()) {
       toast({
         title: "Empty input",
@@ -24,109 +31,103 @@ const Demo = () => {
     }
 
     setIsAnalyzing(true);
+    setError(null);
+    setResult(null);
 
-    // Simulate API call with a simple sentiment detection
-    setTimeout(() => {
-      const lowerText = text.toLowerCase();
-      const positiveWords = ["good", "great", "awesome", "love", "excellent", "happy", "wonderful", "amazing", "fantastic", "best"];
-      const negativeWords = ["bad", "terrible", "hate", "worst", "awful", "horrible", "disappointed", "poor"];
-      const calmWords = ["calm", "peaceful", "relaxed", "serene", "tranquil", "quiet", "gentle", "soothing", "content"];
-      const sadWords = ["sad", "depressed", "unhappy", "miserable", "heartbroken", "crying", "tears", "lonely", "blue"];
-      const shockWords = ["shock", "surprised", "stunned", "amazed", "astonished", "wow", "unbelievable", "unexpected", "can't believe"];
-      const angerWords = ["angry", "furious", "mad", "rage", "outraged", "irritated", "frustrated", "annoyed", "livid", "hate"];
-      
-      const positiveCount = positiveWords.filter(word => lowerText.includes(word)).length;
-      const negativeCount = negativeWords.filter(word => lowerText.includes(word)).length;
-      const calmCount = calmWords.filter(word => lowerText.includes(word)).length;
-      const sadCount = sadWords.filter(word => lowerText.includes(word)).length;
-      const shockCount = shockWords.filter(word => lowerText.includes(word)).length;
-      const angerCount = angerWords.filter(word => lowerText.includes(word)).length;
-      
-      const counts = { positive: positiveCount, negative: negativeCount, calm: calmCount, sad: sadCount, shock: shockCount, anger: angerCount };
-      const maxCount = Math.max(...Object.values(counts));
-      
-      let result: SentimentResult;
-      if (maxCount === 0) {
-        result = "neutral";
-      } else {
-        result = Object.keys(counts).find(key => counts[key as keyof typeof counts] === maxCount) as SentimentResult;
-      }
-      
-      setSentiment(result);
-      setIsAnalyzing(false);
-      
-      toast({
-        title: "Analysis Complete",
-        description: `Sentiment detected: ${result}`,
+    try {
+      const response = await fetch("http://127.0.0.1:5000/predict", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text }),
       });
-    }, 1500);
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setResult(data);
+        toast({
+          title: "Analysis Complete",
+          description: `Emotion detected: ${data.primary_emotion}`,
+        });
+      } else {
+        setError(data.error || "Something went wrong!");
+      }
+    } catch (err) {
+      setError("Unable to connect to backend. Make sure the Flask server is running.");
+      console.error("Error:", err);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
-  const getSentimentDisplay = () => {
-    if (!sentiment) return null;
+  const getEmotionDisplay = () => {
+    if (!result) return null;
 
-    const displays = {
-      positive: {
+    // Map emotions to display properties
+    const emotionMap: Record<string, { icon: React.ReactElement; color: string; bgColor: string; label: string }> = {
+      joy: {
         icon: <Smile className="h-16 w-16" />,
-        color: "text-success",
-        bgColor: "bg-success/10",
-        label: "Positive",
-        description: "This text expresses positive emotions and optimistic sentiment.",
-      },
-      negative: {
-        icon: <Frown className="h-16 w-16" />,
-        color: "text-destructive",
-        bgColor: "bg-destructive/10",
-        label: "Negative",
-        description: "This text expresses negative emotions or critical sentiment.",
-      },
-      neutral: {
-        icon: <Meh className="h-16 w-16" />,
-        color: "text-muted-foreground",
-        bgColor: "bg-muted",
-        label: "Neutral",
-        description: "This text has a balanced or objective tone without strong emotions.",
-      },
-      calm: {
-        icon: <Wind className="h-16 w-16" />,
-        color: "text-blue-500",
-        bgColor: "bg-blue-500/10",
-        label: "Calm",
-        description: "This text conveys a peaceful, serene, and relaxed sentiment.",
-      },
-      sad: {
-        icon: <CloudRain className="h-16 w-16" />,
-        color: "text-slate-500",
-        bgColor: "bg-slate-500/10",
-        label: "Sad",
-        description: "This text expresses sadness, melancholy, or emotional distress.",
-      },
-      shock: {
-        icon: <Zap className="h-16 w-16" />,
         color: "text-yellow-500",
         bgColor: "bg-yellow-500/10",
-        label: "Shock",
-        description: "This text shows surprise, astonishment, or disbelief.",
+        label: "Joy",
+      },
+      sadness: {
+        icon: <CloudRain className="h-16 w-16" />,
+        color: "text-blue-500",
+        bgColor: "bg-blue-500/10",
+        label: "Sadness",
       },
       anger: {
         icon: <Flame className="h-16 w-16" />,
-        color: "text-orange-500",
-        bgColor: "bg-orange-500/10",
+        color: "text-red-500",
+        bgColor: "bg-red-500/10",
         label: "Anger",
-        description: "This text expresses anger, frustration, or intense displeasure.",
+      },
+      fear: {
+        icon: <Wind className="h-16 w-16" />,
+        color: "text-purple-500",
+        bgColor: "bg-purple-500/10",
+        label: "Fear",
+      },
+      love: {
+        icon: <Sparkles className="h-16 w-16" />,
+        color: "text-pink-500",
+        bgColor: "bg-pink-500/10",
+        label: "Love",
+      },
+      surprise: {
+        icon: <Zap className="h-16 w-16" />,
+        color: "text-green-500",
+        bgColor: "bg-green-500/10",
+        label: "Surprise",
       },
     };
 
-    const display = displays[sentiment];
+    // Default fallback
+    const display = emotionMap[result.primary_emotion] || {
+      icon: <Meh className="h-16 w-16" />,
+      color: "text-gray-500",
+      bgColor: "bg-gray-500/10",
+      label: result.primary_emotion.charAt(0).toUpperCase() + result.primary_emotion.slice(1),
+    };
 
     return (
-      <Card className="p-8 mt-6 animate-scale-in">
+      <Card className="p-8 mt-6 animate-in fade-in-50 zoom-in-90 duration-300">
         <div className="text-center">
           <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full ${display.bgColor} ${display.color} mb-4`}>
             {display.icon}
           </div>
-          <h3 className="text-3xl font-bold mb-2 text-card-foreground">{display.label} Sentiment</h3>
-          <p className="text-muted-foreground text-lg">{display.description}</p>
+          <h3 className="text-3xl font-bold mb-2 text-card-foreground">{display.label} Emotion</h3>
+          <p className="text-muted-foreground text-lg">
+            Confidence: {result.primary_confidence}%
+          </p>
+          <div className="mt-4 pt-4 border-t border-border">
+            <p className="text-sm text-muted-foreground">
+              Secondary emotion: {result.secondary_emotion} ({result.secondary_confidence}%)
+            </p>
+          </div>
         </div>
       </Card>
     );
@@ -135,7 +136,7 @@ const Demo = () => {
   return (
     <section id="demo" className="py-20 px-4 bg-muted/30">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12 animate-slide-up">
+        <div className="text-center mb-12 animate-in slide-in-from-bottom-4 duration-500">
           <div className="inline-flex items-center gap-2 mb-4">
             <Sparkles className="h-6 w-6 text-primary" />
             <span className="text-primary font-semibold">Try it yourself</span>
@@ -148,7 +149,7 @@ const Demo = () => {
           </p>
         </div>
 
-        <Card className="p-8 shadow-lg-custom">
+        <Card className="p-8 shadow-lg">
           <div className="space-y-6">
             <div>
               <label htmlFor="text-input" className="block text-lg font-semibold mb-3 text-card-foreground">
@@ -181,7 +182,13 @@ const Demo = () => {
               )}
             </Button>
 
-            {getSentimentDisplay()}
+            {error && (
+              <div className="mt-4 p-4 bg-destructive/10 text-destructive rounded-lg">
+                <p>{error}</p>
+              </div>
+            )}
+
+            {getEmotionDisplay()}
           </div>
         </Card>
 

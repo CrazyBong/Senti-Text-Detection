@@ -89,3 +89,52 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# Python specific ignores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+.pytest_cache
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.env
+pip-log.txt
+pip-delete-this-directory.txt
+celerybeat-schedule
+celerybeat.pid
+
+# Django specific files (if used in the future)
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask specific files
+instance/
+.webassets-cache
+
+# Test files (our test_api.py)
+test_api.py
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
